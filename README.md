@@ -16,8 +16,6 @@ A real-time embedded guitar tuner built on the Raspberry Pi Pico.
 - 1602 I2C LCD
 - LEDs
 
-## Demo
-(Add your demo video link here)
 
 ## Skills Demonstrated
 - Embedded C
