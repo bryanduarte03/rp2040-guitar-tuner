@@ -85,5 +85,7 @@ void lcd1602_set_cursor(lcd1602_i2c_t *lcd, int col, int row) {
 }
 
 void lcd1602_write_str(lcd1602_i2c_t *lcd, const char *s) {
-    while (*s) write_char(lcd, *s++);
+    while (*s) {
+        write_char(lcd, *s++);
+    }
 }

@@ -8,7 +8,7 @@
 #include "hardware/dma.h"
 #include "hardware/i2c.h"
 
-//Settings
+//settings
 #define ADC_PIN        26
 #define ADC_CH         0
 
@@ -46,31 +46,45 @@
 #define PIN_BL 0x08
 
 static bool lcd_backlight = true;
-static inline uint8_t lcd_bl_mask(void) { return lcd_backlight ? PIN_BL : 0; }
+
+static inline uint8_t lcd_bl_mask(void) { 
+    return lcd_backlight ? PIN_BL : 0; }
 
 static void lcd_expander_write(uint8_t data) {
     i2c_write_blocking(I2C_PORT, LCD_ADDR, &data, 1, false);
 }
+
 static void lcd_pulse_enable(uint8_t data) {
     lcd_expander_write(data | PIN_E);
     sleep_us(1);
     lcd_expander_write((uint8_t)(data & ~PIN_E));
     sleep_us(50);
-}
+    }
+
 static void lcd_write4bits(uint8_t nibble_with_ctrl) {
     lcd_expander_write(nibble_with_ctrl);
     lcd_pulse_enable(nibble_with_ctrl);
 }
+
 static void lcd_send(uint8_t value, bool rs_mode) {
     uint8_t high = value & 0xF0;
     uint8_t low  = (uint8_t)((value << 4) & 0xF0);
     uint8_t ctrl = lcd_bl_mask() | (rs_mode ? PIN_RS : 0);
     lcd_write4bits(high | ctrl);
     lcd_write4bits(low  | ctrl);
-}
-static void lcd_command(uint8_t cmd) { lcd_send(cmd, false); }
-static void lcd_write_char(char c)   { lcd_send((uint8_t)c, true); }
-static void lcd_clear(void) { lcd_command(0x01); sleep_ms(2); }
+ }
+
+static void lcd_command(uint8_t cmd) { 
+    lcd_send(cmd, false); 
+    }
+
+    static void lcd_write_char(char c)   { 
+    lcd_send((uint8_t)c, true); 
+    }
+
+    static void lcd_clear(void) { 
+    lcd_command(0x01); sleep_ms(2); 
+    }
 
 static void lcd_set_cursor(int col, int row) {
     static const uint8_t row_offsets[] = {0x00, 0x40};
@@ -83,13 +97,17 @@ static void lcd_set_cursor(int col, int row) {
 static void lcd_write_line(int row, const char *text16) {
     char buf[17];
     size_t len = strlen(text16);
-    if (len > 16) len = 16;
+    if (len > 16) {
+        len = 16;
+    }
     memset(buf, ' ', 16);
     memcpy(buf, text16, len);
     buf[16] = '\0';
 
     lcd_set_cursor(0, row);
-    for (int i = 0; i < 16; i++) lcd_write_char(buf[i]);
+    for (int i = 0; i < 16; i++) {
+        lcd_write_char(buf[i]);
+    }
 }
 static void lcd_init(void) {
     i2c_init(I2C_PORT, I2C_BAUD);
@@ -112,7 +130,7 @@ static void lcd_init(void) {
     lcd_command(0x0C);
 }
 
-// Guitar notes
+// guitar notes
 static const char *notes[6]  = {"E2","A2","D3","G3","B3","E4"};
 static const float freqs[6]  = {82.41f,110.00f,146.83f,196.00f,246.94f,329.63f};
 
@@ -126,7 +144,9 @@ static void wait_for_usb(void) {
     absolute_time_t start = get_absolute_time();
 
     while (!stdio_usb_connected()) {
-        if (absolute_time_diff_us(start, get_absolute_time()) > 8 * 1000 * 1000) break;
+        if (absolute_time_diff_us(start, get_absolute_time()) > 8 * 1000 * 1000){ 
+            break;
+        }
 
         sleep_ms(20);
     }
@@ -134,7 +154,8 @@ static void wait_for_usb(void) {
 
 static void build_hann_window(void) {
     for (int i = 0; i < N; i++) {
-        win[i] = 0.5f * (1.0f - cosf(2.0f * (float)M_PI * (float)i / (float)(N - 1)));
+        win[i] = 0.5f * (1.0f - cosf(2.0f * (float)M_PI * 
+        (float)i / (float)(N - 1)));
     }
 }
 
@@ -145,7 +166,6 @@ static void adc_dma_init(void) {
 
     adc_fifo_setup(true, true, 1, false, false);
     adc_fifo_drain();
-
     adc_set_clkdiv((48000000.0f / FS_HZ) - 1.0f);
 
     dma_chan = dma_claim_unused_channel(true);
@@ -155,7 +175,6 @@ static void adc_dma_init(void) {
     channel_config_set_read_increment(&c, false);
     channel_config_set_write_increment(&c, true);
     channel_config_set_dreq(&c, DREQ_ADC);
-
     dma_channel_configure(dma_chan, &c, adc_buf, &adc_hw->fifo, N, false);
 }
 
@@ -172,7 +191,7 @@ static void capture_block(void) {
     adc_run(false);
 }
 
-//Goertzel and refinement
+//goertzel and refinement
 static float goertzel_power_k(const float *x, int n, int k) {
     float s0 = 0.0f, s1 = 0.0f, s2 = 0.0f;
     float w = 2.0f * (float)M_PI * (float)k / (float)n;
@@ -191,9 +210,13 @@ static float goertzel_power_freq(const float *x, int n, float f, float fs) {
     float kf = (n * f) / fs;
     int k = (int)(kf + 0.5f);
     
-    if (k < 1) k = 1;
+    if (k < 1) {
+        k = 1;
+    }
     
-    if (k > n - 2) k = n - 2;
+    if (k > n - 2) {
+        k = n - 2;
+    }
     
     return goertzel_power_k(x, n, k);
 }
@@ -203,9 +226,13 @@ static float refine_freq_hz(const float *x, int n, float fs, float f_note) {
     float kf = (n * f_note) / fs;
     int k0 = (int)(kf + 0.5f);
     
-    if (k0 < 1) k0 = 1;
+    if (k0 < 1) {
+        k0 = 1;
+    }
     
-    if (k0 > n - 2) k0 = n - 2;
+    if (k0 > n - 2) {
+        k0 = n - 2;
+    }
 
     float pm = goertzel_power_k(x, n, k0 - 1);
     float p0 = goertzel_power_k(x, n, k0);
@@ -251,7 +278,7 @@ static void prep_block(float *x_out, uint16_t *mn_out, uint16_t *mx_out) {
     *mx_out = mx;
 }
 
-// Score = F + a bit of 2F ONLY (NO 3F -> fixes A2->E4)
+// score = F + a bit of 2F ONLY (NO 3F -> fixes A2->E4)
 static float note_score(const float *x, float f0) {
     float nyq = FS_HZ * 0.5f;
     float p1 = goertzel_power_freq(x, N, f0, FS_HZ);
@@ -261,7 +288,7 @@ static float note_score(const float *x, float f0) {
     return comb / f0;
 }
 
-// Median-of-5 for cents (spike killer)
+// median-of-5 for cents -spikes
 static inline void sort2(float *a, float *b) { if (*a > *b) { float t=*a; *a=*b; *b=t; } }
 static float median5(float a, float b, float c, float d, float e) {
     sort2(&a,&b); 
@@ -322,7 +349,7 @@ int main(void) {
 
         int amp = (int)mx - (int)mn;
 
-        // Silence gating + LED off
+        // silence gating and LED off
         if (!active) {
             if (amp >= AMP_ON) {
                 active = true;
@@ -336,7 +363,8 @@ int main(void) {
                 gpio_put(LED_RED_PIN, 0);
                 continue;
             }
-        } else {
+        } 
+        else {
             if (amp <= AMP_OFF) {
                 active = false;
                 gpio_put(LED_GREEN_PIN, 0);
@@ -347,18 +375,18 @@ int main(void) {
             }
         }
 
-        // Attack skip
+        // attack skip
         if (absolute_time_diff_us(active_since, get_absolute_time()) < (ATTACK_SKIP_MS * 1000)) {
             continue;
         }
 
-        // Fundamental powers (for harmonic sanity check)
+        // fundamental powers (for harmonic sanity check)
         float pFund[6];
         for (int i = 0; i < 6; i++) {
             pFund[i] = goertzel_power_freq(x, N, freqs[i], FS_HZ);
         }
 
-        // Pick best/second by score
+        // pick best/second by score
         int best = 0, second = 1;
         float best_s = -1.0f, second_s = -1.0f;
         for (int i = 0; i < 6; i++) {
@@ -371,7 +399,7 @@ int main(void) {
             }
         }
 
-        // Confidence
+        // confidence
         if (!(best_s > (CONF_RATIO * second_s))) continue;
 
         // Harmonic sanity check: prefer lower string if winner is its 2x/3x/4x harmonic
@@ -389,7 +417,7 @@ int main(void) {
         }
         best = corrected;
 
-        // NOTE_HOLD stability
+        // note hold
         if (best != prev_candidate) {
             prev_candidate = best;
             stable_since = get_absolute_time();
@@ -399,14 +427,14 @@ int main(void) {
             continue;
         }
 
-        // Estimate freq/cents (refine near expected note)
+        // estimate freq/cents refine near expected note
         float f_note = freqs[best];
         float f_est  = refine_freq_hz(x, N, FS_HZ, f_note);
         float c_raw  = cents_off(f_est, f_note);
 
         bool note_changed = (best != last_note);
 
-        // Cents median-of-5 then EMA
+        // cents median-of-5 then EMA
         c_hist[c_hist_i] = c_raw;
         c_hist_i = (c_hist_i + 1) % 5;
         if (c_hist_n < 5) c_hist_n++;
@@ -426,7 +454,7 @@ int main(void) {
         float cents = c_ema;
         float abs_c = fabsf(cents);
 
-        // Label: show IN immediately when within window
+        // label: show IN immediately when within window
         const char *label = (abs_c <= IN_TUNE_CENTS) ? "IN" : ((cents > 0.0f) ? "SHARP" : "FLAT");
 
         // LEDs match label
@@ -434,7 +462,7 @@ int main(void) {
         gpio_put(LED_GREEN_PIN, in_now ? 1 : 0);
         gpio_put(LED_RED_PIN,   in_now ? 0 : 1);
 
-        // Update outputs (USB + LCD) with throttle
+        // update outputs (USB + LCD) with throttle
         bool change = note_changed || (fabsf(cents - last_cents) >= 1.0f);
         if (change && absolute_time_diff_us(last_out, get_absolute_time()) >= (PRINT_MIN_MS * 1000)) {
             printf("amp=%d  note=%s  est=%.2fHz  cents=%+0.1f  %s\n",
