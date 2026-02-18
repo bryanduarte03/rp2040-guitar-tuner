@@ -1,0 +1,19 @@
+# Build folder
+build/
+
+# Pico SDK external
+pico-sdk/
+
+# VSCode
+.vscode/
+
+# Mac
+.DS_Store
+
+# Compiled outputs
+*.uf2
+*.elf
+*.bin
+*.hex
+*.map
+
