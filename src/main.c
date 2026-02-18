@@ -11,18 +11,13 @@
 //settings
 #define ADC_PIN        26
 #define ADC_CH         0
-
 #define FS_HZ          10000.0f
 #define N              2048
-
 #define NOTE_HOLD_MS       180
 #define PRINT_MIN_MS       120
-
 #define AMP_ON             80
 #define AMP_OFF            55
-
 #define CONF_RATIO         1.7f
-
 #define ATTACK_SKIP_MS      120
 
 // Cents smoothing
